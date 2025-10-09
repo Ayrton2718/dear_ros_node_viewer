@@ -30,3 +30,13 @@ def test_caret2networkx():
 
     graph = caret2networkx('architecture.yaml', target_path='target_path_0')
     assert(graph.has_node('"/node_src"'))
+
+
+def test_caret2networkx_with_service():
+    graph = caret2networkx('./sample/architecture_with_service.yaml')
+    assert(graph.has_node('"/node_pub"'))
+    assert(graph.has_node('"/node_sub"'))
+    assert(graph.has_node('"/node_client"'))
+    assert(graph.has_node('"/node_server"'))
+    assert(graph.has_edge('"/node_pub"', '"/node_sub"'))
+    assert(graph.has_edge('"/node_client"', '"/node_server"'))

@@ -24,3 +24,13 @@ def test_dot2networkx():
 
     graph = dot2networkx('./sample/rosgraph_nodetopic.dot')
     assert(graph.has_node('"/node_src"'))
+
+
+def test_dot2networkx_with_service():
+    graph = dot2networkx('./sample/rosgraph_with_service.dot')
+    assert(graph.has_node('"/node_pub"'))
+    assert(graph.has_node('"/node_sub"'))
+    assert(graph.has_node('"/node_client"'))
+    assert(graph.has_node('"/node_server"'))
+    assert(graph.has_edge('"/node_pub"', '"/node_sub"'))
+    assert(graph.has_edge('"/node_client"', '"/node_server"'))

@@ -42,7 +42,8 @@ def quote_name(name: str) -> str:
   return modified_name
 
 
-def parse_all_graph(yml, node_name_list, topic_pub_dict, topic_sub_dict):
+def parse_all_graph(yml, node_name_list, topic_pub_dict, topic_sub_dict,
+                    service_client_dict, service_server_dict):
   """Parse architecture file"""
   nodes = yml['nodes']
   for node in nodes:
@@ -62,9 +63,24 @@ def parse_all_graph(yml, node_name_list, topic_pub_dict, topic_sub_dict):
           topic_sub_dict[subscribe['topic_name']].append(node_name)
         else:
           topic_sub_dict[subscribe['topic_name']] = [node_name]
+    if 'service_clients' in node:
+      service_clients = node['service_clients']
+      for service_client in service_clients:
+        if service_client['service_name'] in service_client_dict:
+          service_client_dict[service_client['service_name']].append(node_name)
+        else:
+          service_client_dict[service_client['service_name']] = [node_name]
+    if 'service_servers' in node:
+      service_servers = node['service_servers']
+      for service_server in service_servers:
+        if service_server['service_name'] in service_server_dict:
+          service_server_dict[service_server['service_name']].append(node_name)
+        else:
+          service_server_dict[service_server['service_name']] = [node_name]
 
 
-def parse_target_path(yml, node_name_list, topic_pub_dict, topic_sub_dict):
+def parse_target_path(yml, node_name_list, topic_pub_dict, topic_sub_dict,
+                       service_client_dict, service_server_dict):
   """Parse architecture file"""
   named_paths = yml['named_paths']
   if len(named_paths) > 0:
@@ -99,6 +115,22 @@ def make_graph_from_topic_association(topic_pub_dict: dict[str, list[str]],
   return graph
 
 
+def make_graph_from_service_association(service_client_dict: dict[str, list[str]],
+                    service_server_dict: dict[str, list[str]]):
+  """make graph from service association"""
+  graph = nx.MultiDiGraph()
+  for service, node_client_list in service_client_dict.items():
+    if service in service_server_dict:
+      node_server_list = service_server_dict[service]
+    else:
+      continue
+    for node_client in node_client_list:
+      for node_server in node_server_list:
+        graph.add_edge(node_client, node_server, label=service)
+
+  return graph
+
+
 def caret2networkx(filename: str, target_path: str = 'all_graph',
            display_unconnected_nodes=False) -> nx.classes.multidigraph.MultiDiGraph:
   """
@@ -127,14 +159,24 @@ def caret2networkx(filename: str, target_path: str = 'all_graph',
   # "/topic_0": ["/node_1", ], <- subscribers of /topic_0 are ["/node_1", ] #
   topic_sub_dict: dict[str, list[str]] = {}
 
+  # "/service_0": ["/node_0", ], <- clients of /service_0 are ["/node_0", ] #
+  service_client_dict: dict[str, list[str]] = {}
+
+  # "/service_0": ["/node_1", ], <- servers of /service_0 are ["/node_1", ] #
+  service_server_dict: dict[str, list[str]] = {}
+
   with open(filename, encoding='UTF-8') as file:
     yml = yaml.safe_load(file)
     if target_path == 'all_graph':
-      parse_all_graph(yml, node_name_list, topic_pub_dict, topic_sub_dict)
+      parse_all_graph(yml, node_name_list, topic_pub_dict, topic_sub_dict,
+                      service_client_dict, service_server_dict)
     else:
-      parse_target_path(yml, node_name_list, topic_pub_dict, topic_sub_dict)
+      parse_target_path(yml, node_name_list, topic_pub_dict, topic_sub_dict,
+                        service_client_dict, service_server_dict)
 
   graph = make_graph_from_topic_association(topic_pub_dict, topic_sub_dict)
+  graph_service = make_graph_from_service_association(service_client_dict, service_server_dict)
+  graph = nx.compose(graph, graph_service)
 
   if display_unconnected_nodes:
     graph.add_nodes_from(node_name_list)

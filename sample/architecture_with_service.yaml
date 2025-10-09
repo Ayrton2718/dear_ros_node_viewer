@@ -1,0 +1,30 @@
+named_paths: []
+executors: []
+nodes:
+- node_name: /node_pub
+  callback_groups: []
+  callbacks: []
+  publishes:
+  - topic_name: /topic_test
+    callback_names:
+    - UNDEFINED
+- node_name: /node_sub
+  callback_groups: []
+  callbacks: []
+  subscribes:
+  - topic_name: /topic_test
+    callback_name: UNDEFINED
+- node_name: /node_client
+  callback_groups: []
+  callbacks: []
+  service_clients:
+  - service_name: /service_test
+    callback_names:
+    - UNDEFINED
+- node_name: /node_server
+  callback_groups: []
+  callbacks: []
+  service_servers:
+  - service_name: /service_test
+    callback_names:
+    - UNDEFINED

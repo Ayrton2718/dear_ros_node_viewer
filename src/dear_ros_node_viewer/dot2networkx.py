@@ -20,7 +20,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 from .logger_factory import LoggerFactory
-from .caret2networkx import make_graph_from_topic_association
+from .caret2networkx import make_graph_from_topic_association, make_graph_from_service_association
 
 logger = LoggerFactory.create(__name__)
 
@@ -37,7 +37,9 @@ def dot2networkx_nodeonly(graph_org: nx.classes.digraph.DiGraph,
       graph.add_node(label)
 
   for edge in graph_org.edges:
-    if 'label' not in graph_org.nodes[edge[0]] or 'label' not in graph_org.nodes[edge[1]] or 'label' not in graph_org.edges[edge]:
+    if ('label' not in graph_org.nodes[edge[0]] or
+        'label' not in graph_org.nodes[edge[1]] or
+        'label' not in graph_org.edges[edge]):
       continue
     node_pub = graph_org.nodes[edge[0]]['label']
     node_sub = graph_org.nodes[edge[1]]['label']
@@ -48,13 +50,19 @@ def dot2networkx_nodeonly(graph_org: nx.classes.digraph.DiGraph,
 
 
 def dot2networkx_nodetopic(graph_org: nx.classes.digraph.DiGraph) -> nx.classes.digraph.DiGraph:
-  """Create NetworkX Object from dot graph file (nodes / topics) by rqt_graph"""
+  """Create NetworkX Object from dot graph file (nodes / topics / services) by rqt_graph"""
 
   # "/topic_0": ["/node_0", ], <- publishers of /topic_0 are ["/node_0", ] #
   topic_pub_dict: dict[str, list[str]] = {}
 
   # "/topic_0": ["/node_1", ], <- subscribers of /topic_0 are ["/node_1", ] #
   topic_sub_dict: dict[str, list[str]] = {}
+
+  # "/service_0": ["/node_0", ], <- clients of /service_0 are ["/node_0", ] #
+  service_client_dict: dict[str, list[str]] = {}
+
+  # "/service_0": ["/node_1", ], <- servers of /service_0 are ["/node_1", ] #
+  service_server_dict: dict[str, list[str]] = {}
 
   for edge in graph_org.edges:
     src = graph_org.nodes[edge[0]]
@@ -65,19 +73,35 @@ def dot2networkx_nodetopic(graph_org: nx.classes.digraph.DiGraph) -> nx.classes.
     dst_name = dst['label']
     src_is_node = bool(src['shape'] == 'ellipse')
     dst_is_node = bool(dst['shape'] == 'ellipse')
+    src_is_topic = bool(src['shape'] == 'box')
+    dst_is_topic = bool(dst['shape'] == 'box')
+    src_is_service = bool(src['shape'] in ['doubleoctagon', 'doublecircle'])
+    dst_is_service = bool(dst['shape'] in ['doubleoctagon', 'doublecircle'])
 
-    if src_is_node is True and dst_is_node is False:
+    if src_is_node is True and dst_is_topic is True:
       if dst_name in topic_pub_dict:
         topic_pub_dict[dst_name].append(src_name)
       else:
         topic_pub_dict[dst_name] = [src_name]
-    elif src_is_node is False and dst_is_node is True:
+    elif src_is_topic is True and dst_is_node is True:
       if src_name in topic_sub_dict:
         topic_sub_dict[src_name].append(dst_name)
       else:
         topic_sub_dict[src_name] = [dst_name]
+    elif src_is_node is True and dst_is_service is True:
+      if dst_name in service_client_dict:
+        service_client_dict[dst_name].append(src_name)
+      else:
+        service_client_dict[dst_name] = [src_name]
+    elif src_is_service is True and dst_is_node is True:
+      if src_name in service_server_dict:
+        service_server_dict[src_name].append(dst_name)
+      else:
+        service_server_dict[src_name] = [dst_name]
 
   graph = make_graph_from_topic_association(topic_pub_dict, topic_sub_dict)
+  graph_service = make_graph_from_service_association(service_client_dict, service_server_dict)
+  graph = nx.compose(graph, graph_service)
 
   return graph
 
