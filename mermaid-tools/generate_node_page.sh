@@ -1,12 +1,11 @@
 #!/bin/bash
 # Script to generate node-centric pages and split diagrams into subgraphs
-# Usage: ./generate_node_page.sh [input_mermaid_file]
+# Usage: ./generate_node_page.sh <input_mermaid_file> [output_directory]
 
 set -e  # Exit on error
 
 # Default values
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CURRENT_DIR="$(pwd)"
 
 # Convert INPUT_FILE to absolute path
 if [ -n "$1" ]; then
@@ -18,20 +17,40 @@ if [ -n "$1" ]; then
         INPUT_FILE="$(cd "$(dirname "$1")" 2>/dev/null && pwd)/$(basename "$1")"
     fi
 else
-    echo "No input file specified, using default 'ros_graph.mermaid.html'"
+    echo "Usage: $0 <input_mermaid_file> [output_directory]"
+    echo ""
+    echo "Arguments:"
+    echo "  input_mermaid_file   Path to the input Mermaid HTML file (required)"
+    echo "  output_directory     Output directory path (optional, defaults to current directory)"
     exit 1
 fi
 
-# Output files in current directory
-LINKED_OUTPUT="$CURRENT_DIR/ros_graph_linked.mermaid.html"
-NODES_DIR="$CURRENT_DIR/nodes"
-SUBGRAPH_DIR="$CURRENT_DIR"
+# Set output directory (default to current directory if not specified)
+if [ -n "$2" ]; then
+    if [[ "$2" = /* ]]; then
+        # Already absolute path
+        OUTPUT_DIR="$2"
+    else
+        # Convert relative path to absolute
+        OUTPUT_DIR="$(cd "$(dirname "$2")" 2>/dev/null && pwd)/$(basename "$2")"
+    fi
+    # Create output directory if it doesn't exist
+    mkdir -p "$OUTPUT_DIR"
+else
+    OUTPUT_DIR="$(pwd)"
+fi
+
+# Output files in output directory
+LINKED_OUTPUT="$OUTPUT_DIR/ros_graph_linked.mermaid.html"
+NODES_DIR="$OUTPUT_DIR/nodes"
+SUBGRAPH_DIR="$OUTPUT_DIR"
 
 # Print configuration
 echo "======================================================================"
 echo "ROS Node Graph Generation Pipeline"
 echo "======================================================================"
 echo "Input file:             $INPUT_FILE"
+echo "Output directory:       $OUTPUT_DIR"
 echo "Linked graph output:    $LINKED_OUTPUT"
 echo "Individual nodes dir:   $NODES_DIR"
 echo "Subgraph files dir:     $SUBGRAPH_DIR"
