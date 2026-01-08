@@ -36,6 +36,7 @@ class GraphView:
     self.dpg_window_id: int = -1
     self.dpg_id_editor: int = -1
     self.dpg_id_caret_path: int = -1
+    self.dpg_id_mermaid_export_dialog: int = -1
 
     self.color_node_selected = [0, 0, 64]
     self.color_node_bar = [32, 32, 32]
@@ -65,6 +66,7 @@ class GraphView:
 
       self.add_menu_in_dpg()
 
+    self._setup_mermaid_export_dialog()
     self.graph_viewmodel.load_graph(graph_filename)
     self.update_node_editor(self.app_setting['bg_white'], display_cb_detail)
 
@@ -115,6 +117,9 @@ class GraphView:
         dpg.add_menu_item(label="Load", callback=self._cb_menu_layout_load, shortcut='(l)')
 
       dpg.add_menu_item(label="Copy", callback=self._cb_menu_copy, shortcut='(c)')
+
+      with dpg.menu(label="Export"):
+        dpg.add_menu_item(label="Export to Mermaid (HTML)", callback=self._cb_menu_export_mermaid_html, shortcut='(h)')
 
       with dpg.menu(label="Font"):
         dpg.add_slider_int(label="Font Size",
@@ -310,6 +315,8 @@ class GraphView:
       self._cb_menu_layout_load()
     elif app_data == dpg.mvKey_C:
       self._cb_menu_copy()
+    elif app_data == dpg.mvKey_H:
+      self._cb_menu_export_mermaid_html()
 
   def _cb_menu_layout_reset(self):
     """ Reset layout """
@@ -374,6 +381,34 @@ class GraphView:
     """ High light selected CARET path """
     path_name = dpg.get_item_label(sender)
     self.graph_viewmodel.high_light_caret_path(path_name)
+
+  def _setup_mermaid_export_dialog(self):
+    """ Setup folder selection dialog for Mermaid export """
+    with dpg.file_dialog(
+        directory_selector=True,
+        show=False,
+        callback=self._cb_mermaid_export_dialog,
+        tag="mermaid_export_dialog",
+        width=700,
+        height=400) as self.dpg_id_mermaid_export_dialog:
+      pass
+
+  def _cb_mermaid_export_dialog(self, sender, app_data, user_data):
+    """ Callback for folder selection dialog """
+    if app_data and 'file_path_name' in app_data and app_data['file_path_name']:
+      selected_path = app_data['file_path_name']
+      # Ensure path ends with '/' for consistency
+      if not selected_path.endswith('/'):
+        selected_path += '/'
+      html_path = self.graph_viewmodel.export_to_mermaid(selected_path)
+      logger.info(f"Exported to Mermaid HTML: {html_path}")
+    else:
+      # User cancelled the dialog
+      logger.info("Mermaid export cancelled by user")
+
+  def _cb_menu_export_mermaid_html(self):
+    """ Export graph to Mermaid HTML format """
+    dpg.show_item(self.dpg_id_mermaid_export_dialog)
 
   def _make_font_table(self, font_path):
     """Make font table"""
